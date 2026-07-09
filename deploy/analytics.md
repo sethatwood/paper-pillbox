@@ -86,10 +86,24 @@ in the web root is served to the public. `stats.sh` refuses to do that.
 ## Retention
 
 `stats.sh` reads today's log plus every rotated one that logrotate still has,
-so history runs back as far as Ubuntu's default nginx policy keeps — about two
-weeks. If you want longer, raise `rotate` in `/etc/logrotate.d/nginx`.
+so history runs back as far as Ubuntu's default nginx policy keeps — 14 days,
+per `rotate 14` in `/etc/logrotate.d/nginx`. Raise it there if you want longer.
 
 Nothing else stores this data. It expires on its own, which is the point.
+
+## Reading logs without sudo
+
+nginx creates the log as `root:root`. After the first nightly rotation,
+logrotate recreates it as `www-data:adm 0640` — and `forge` is not in the `adm`
+group, so `stats.sh` will start asking for a sudo password. The standard fix,
+once:
+
+```sh
+sudo usermod -aG adm forge     # log out and back in for it to take effect
+```
+
+`stats.sh` falls back to `sudo` on its own if you skip this, so nothing breaks
+either way.
 
 ## One leak Forge leaves behind
 
