@@ -87,6 +87,13 @@ curl -s -o /dev/null -w '%{redirect_url}\n' https://www.paperpillbox.com        
 Then open the site, add a medication, and print to PDF. The preview is the
 artifact; if it looks right on screen, it is right on paper.
 
+## 5. Analytics
+
+There is no analytics script, and there should never be one — see
+[`analytics.md`](analytics.md). Usage is read from nginx's own access logs,
+which `nginx.conf` configures to truncate visitor IP addresses before writing
+them to disk. GoAccess turns them into a dashboard over SSH.
+
 ## Hosting it somewhere else
 
 Any static host works — the repository has no server-side anything. If you use

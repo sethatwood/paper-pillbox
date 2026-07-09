@@ -56,6 +56,11 @@ with `Content-Security-Policy: connect-src 'none'`, so the page **cannot** open
 a network connection to anywhere, not even back to the server it came from.
 Open devtools and check.
 
+There is no analytics script and no Google anything. The web server keeps
+ordinary access logs, with visitor IP addresses truncated before they're
+written to disk — enough to count visits, not enough to identify a household.
+The reasoning is written up in [deploy/analytics.md](deploy/analytics.md).
+
 ## Run it yourself
 
 It's a static page. Clone the repo and open `index.html` in a browser —
