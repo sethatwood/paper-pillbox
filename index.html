@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Pillbox — print a clear medication chart</title>
+  <meta name="description" content="Free medication chart maker. Large print, easy to read, completely private — nothing you type ever leaves your browser.">
+  <meta name="theme-color" content="#0A5D50">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#builder">Skip to the chart builder</a>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <p class="wordmark">
+        <svg class="wordmark-pill" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect x="3" y="10.5" width="26" height="11" rx="5.5" fill="#fff" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 10.5h7.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H16Z" fill="currentColor"/>
+        </svg>
+        Paper Pillbox
+      </p>
+      <p class="tagline">Make a medication chart that's easy to read — and print it.</p>
+      <p class="privacy-note">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4 7V5a4 4 0 0 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7Zm2 0h4V5a2 2 0 0 0-4 0Z" fill="currentColor"/></svg>
+        Private by design — nothing you type leaves this page.
+      </p>
+    </div>
+  </header>
+
+  <main class="app">
+    <!-- ============ Builder rail ============ -->
+    <div class="builder" id="builder">
+
+      <section class="card" aria-labelledby="who-heading">
+        <h2 id="who-heading"><span class="step" aria-hidden="true">1</span>Who is this chart for?</h2>
+        <div class="field">
+          <label for="person-name">Name</label>
+          <input id="person-name" type="text" autocomplete="off" placeholder="e.g., Mom, or Dad" data-person="name">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="person-week">Week of <span class="optional">(optional)</span></label>
+            <input id="person-week" type="text" autocomplete="off" placeholder="e.g., July 6 – 12" data-person="week">
+          </div>
+          <div class="field">
+            <label for="person-allergies">Allergies <span class="optional">(optional)</span></label>
+            <input id="person-allergies" type="text" autocomplete="off" placeholder="e.g., penicillin" data-person="allergies">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="person-doctor">Doctor's phone <span class="optional">(optional)</span></label>
+            <input id="person-doctor" type="tel" autocomplete="off" placeholder="(555) 123-4567" data-person="doctor">
+          </div>
+          <div class="field">
+            <label for="person-pharmacy">Pharmacy phone <span class="optional">(optional)</span></label>
+            <input id="person-pharmacy" type="tel" autocomplete="off" placeholder="(555) 987-6543" data-person="pharmacy">
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="meds-heading">
+        <h2 id="meds-heading"><span class="step" aria-hidden="true">2</span>Add each medication</h2>
+
+        <form id="med-form" novalidate>
+          <div class="field">
+            <label for="med-name">Medication name</label>
+            <input id="med-name" type="text" autocomplete="off" placeholder="e.g., Metformin" required aria-describedby="med-name-error">
+            <p class="field-error" id="med-name-error" hidden>Please enter the medication's name.</p>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="med-dose">Dose <span class="optional">(optional)</span></label>
+              <input id="med-dose" type="text" autocomplete="off" placeholder="e.g., 500 mg · 1 tablet">
+            </div>
+            <div class="field">
+              <label for="med-purpose">What it's for <span class="optional">(optional)</span></label>
+              <input id="med-purpose" type="text" autocomplete="off" placeholder="e.g., blood pressure">
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="med-shape">What it looks like</label>
+              <select id="med-shape">
+                <option value="round">Round tablet</option>
+                <option value="oval">Oval tablet</option>
+                <option value="capsule">Capsule</option>
+                <option value="liquid">Liquid</option>
+                <option value="drops">Drops</option>
+                <option value="inhaler">Inhaler</option>
+                <option value="injection">Injection</option>
+                <option value="patch">Patch</option>
+                <option value="cream">Cream or gel</option>
+                <option value="other">Something else</option>
+              </select>
+            </div>
+            <div class="field chip-preview-field">
+              <span class="label-like" aria-hidden="true">Preview</span>
+              <span class="chip-preview" id="chip-preview" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <fieldset class="field">
+            <legend>Color</legend>
+            <div class="swatches" id="med-color" role="radiogroup"></div>
+          </fieldset>
+
+          <fieldset class="field" aria-describedby="med-times-error">
+            <legend>When is it taken?</legend>
+            <div class="time-checks" id="med-times">
+              <label class="time-check time-morning"><input type="checkbox" value="morning"><span class="time-check-label">Morning</span></label>
+              <label class="time-check time-noon"><input type="checkbox" value="noon"><span class="time-check-label">Noon</span></label>
+              <label class="time-check time-evening"><input type="checkbox" value="evening"><span class="time-check-label">Evening</span></label>
+              <label class="time-check time-bedtime"><input type="checkbox" value="bedtime"><span class="time-check-label">Bedtime</span></label>
+              <label class="time-check time-prn"><input type="checkbox" value="prn"><span class="time-check-label">Only as needed</span></label>
+            </div>
+            <p class="field-error" id="med-times-error" hidden>Please pick at least one time of day.</p>
+          </fieldset>
+
+          <div class="field" id="max-per-day-field" hidden>
+            <label for="med-max">Most in 24 hours <span class="optional">(optional)</span></label>
+            <input id="med-max" type="text" autocomplete="off" placeholder="e.g., up to 3 doses">
+          </div>
+
+          <div class="field">
+            <label for="med-instructions">Special instructions <span class="optional">(optional)</span></label>
+            <input id="med-instructions" type="text" autocomplete="off" placeholder="e.g., with food">
+            <div class="quick-chips" aria-label="Common instructions">
+              <button type="button" class="quick-chip" data-chip="With food">With food</button>
+              <button type="button" class="quick-chip" data-chip="On an empty stomach">On an empty stomach</button>
+              <button type="button" class="quick-chip" data-chip="With a full glass of water">With water</button>
+              <button type="button" class="quick-chip" data-chip="Do not crush">Do not crush</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="med-submit">Add to chart</button>
+            <button type="button" class="btn btn-ghost" id="med-cancel" hidden>Cancel</button>
+          </div>
+        </form>
+
+        <div class="med-list-wrap">
+          <h3 class="med-list-heading" id="med-list-heading" hidden>On this chart</h3>
+          <ul class="med-list" id="med-list" aria-labelledby="meds-heading"></ul>
+          <div class="example-offer" id="example-offer">
+            <p>Not sure where to start?</p>
+            <button type="button" class="btn btn-subtle" id="load-example">Show me an example chart</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="print-heading">
+        <h2 id="print-heading"><span class="step" aria-hidden="true">3</span>Print it</h2>
+
+        <fieldset class="field">
+          <legend>Print size</legend>
+          <div class="size-options" role="radiogroup">
+            <label class="size-option"><input type="radio" name="text-size" value="standard"><span><strong>Standard</strong><small>Fits the most medications</small></span></label>
+            <label class="size-option"><input type="radio" name="text-size" value="large" checked><span><strong>Large</strong><small>Easy on the eyes</small></span></label>
+            <label class="size-option"><input type="radio" name="text-size" value="xl"><span><strong>Extra large</strong><small>For low vision</small></span></label>
+          </div>
+        </fieldset>
+
+        <button type="button" class="btn btn-primary btn-print" id="print-btn">
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M5 2h10v4h1.5A1.5 1.5 0 0 1 18 7.5v6a1.5 1.5 0 0 1-1.5 1.5H15v3H5v-3H3.5A1.5 1.5 0 0 1 2 13.5v-6A1.5 1.5 0 0 1 3.5 6H5Zm2 2v2h6V4Zm0 9v3h6v-3Zm8-4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor"/></svg>
+          Print chart
+        </button>
+        <p class="print-hint">Tip: in the print window, choose <strong>landscape</strong>. To save a PDF instead of printing, choose <strong>“Save as PDF.”</strong></p>
+
+        <div class="data-actions">
+          <button type="button" class="btn btn-subtle" id="export-btn">Save a backup file</button>
+          <button type="button" class="btn btn-subtle" id="import-btn">Open a backup</button>
+          <input type="file" id="import-input" accept=".json,application/json" hidden>
+          <button type="button" class="btn btn-subtle btn-danger-subtle" id="reset-btn">Start over</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ Preview pane ============ -->
+    <div class="preview-pane">
+      <div class="preview-toolbar">
+        <h2 class="preview-title">Preview — exactly what will print</h2>
+        <p class="save-indicator" id="save-indicator" role="status" aria-live="polite"></p>
+      </div>
+      <div class="sheet-viewport" id="sheet-viewport">
+        <article class="sheet" id="sheet" aria-label="Medication chart preview"></article>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <p><strong>Paper Pillbox</strong> is free and open source. No ads, no account, no tracking — your medication list is saved on this device only, and is never sent anywhere.</p>
+      <p class="disclaimer">A chart is a memory aid, not medical advice. Always follow the directions from your doctor or pharmacist.</p>
+    </div>
+  </footer>
+
+  <div class="snackbar" id="snackbar" role="status" aria-live="polite" hidden>
+    <span id="snackbar-text"></span>
+    <button type="button" class="snackbar-action" id="snackbar-action" hidden>Undo</button>
+  </div>
+
+  <dialog class="confirm-dialog" id="reset-dialog">
+    <h2>Start over?</h2>
+    <p>This clears the whole chart — every medication and every detail. If you might want it later, save a backup first.</p>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-subtle" id="reset-cancel">Keep my chart</button>
+      <button type="button" class="btn btn-danger" id="reset-confirm">Clear everything</button>
+    </div>
+  </dialog>
+
+  <noscript>
+    <div class="noscript-note">
+      <p>Paper Pillbox needs JavaScript to build your chart. Everything runs right here in your browser — nothing you type is ever uploaded.</p>
+    </div>
+  </noscript>
+
+  <script src="app.js"></script>
+</body>
+</html>
