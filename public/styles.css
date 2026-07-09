@@ -798,21 +798,39 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
 }
 .disclaimer { font-size: 14px; }
 
-.source-link a,
-.contact-link a {
-  display: inline-flex;
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 34px;
   margin-top: 2px;
+}
+.footer-link {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.footer-link svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  /* Centre on the first line, not on the block: the sentence wraps on
+     narrow screens and a centred icon drifts into the gap between lines. */
+  margin-top: 7px;
+  color: var(--green-deep);
+}
+.footer-link a {
+  /* Inline links are exempt from the 24px target minimum, but this audience
+     taps with imprecise fingers. The padding buys height without breaking the
+     line box. */
+  display: inline-block;
+  padding: 4px 0;
   color: var(--green-deep);
   font-weight: 700;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.source-link svg,
-.contact-link svg { width: 17px; height: 17px; flex: none; }
-.source-link a:hover,
-.contact-link a:hover { color: var(--ink); }
+.footer-link a:hover { color: var(--ink); }
 
 /* ---------- Snackbar ---------- */
 .snackbar {
