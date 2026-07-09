@@ -6,8 +6,30 @@
   <title>Paper Pillbox — print a clear medication chart</title>
   <meta name="description" content="Free medication chart maker. Large print, easy to read, completely private — nothing you type ever leaves your browser.">
   <meta name="theme-color" content="#0A5D50">
+  <link rel="canonical" href="https://paperpillbox.com/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Paper Pillbox">
+  <meta property="og:url" content="https://paperpillbox.com/">
+  <meta property="og:title" content="Paper Pillbox — print a clear medication chart">
+  <meta property="og:description" content="Free medication chart maker. Large print, easy to read, completely private — nothing you type ever leaves your browser.">
+  <meta property="og:image" content="https://paperpillbox.com/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A large-print weekly medication chart with morning, evening and bedtime sections and a checkbox for each day.">
+  <meta property="og:locale" content="en_US">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Paper Pillbox — print a clear medication chart">
+  <meta name="twitter:description" content="Free medication chart maker. Large print, easy to read, completely private — nothing you type ever leaves your browser.">
+  <meta name="twitter:image" content="https://paperpillbox.com/og-image.png">
+  <meta name="twitter:image:alt" content="A large-print weekly medication chart with morning, evening and bedtime sections and a checkbox for each day.">
   <link rel="stylesheet" href="styles.css">
+  <!-- @page can't read a custom property, so the orientation rule is swapped at runtime. -->
+  <style id="page-rule">@page { size: portrait; margin: 10mm 12mm; }</style>
 </head>
 <body>
   <a class="skip-link" href="#builder">Skip to the chart builder</a>
@@ -157,6 +179,22 @@
         <h2 id="print-heading"><span class="step" aria-hidden="true">3</span>Print it</h2>
 
         <fieldset class="field">
+          <legend>Paper direction</legend>
+          <div class="orientation-options" role="radiogroup">
+            <label class="orientation-option">
+              <input type="radio" name="orientation" value="portrait" checked>
+              <span class="orientation-art portrait" aria-hidden="true"></span>
+              <span class="orientation-text"><strong>Portrait</strong><small>Tall — fits a binder</small></span>
+            </label>
+            <label class="orientation-option">
+              <input type="radio" name="orientation" value="landscape">
+              <span class="orientation-art landscape" aria-hidden="true"></span>
+              <span class="orientation-text"><strong>Landscape</strong><small>Wide — roomier boxes</small></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
           <legend>Print size</legend>
           <div class="size-options" role="radiogroup">
             <label class="size-option"><input type="radio" name="text-size" value="standard"><span><strong>Standard</strong><small>Fits the most medications</small></span></label>
@@ -169,7 +207,7 @@
           <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M5 2h10v4h1.5A1.5 1.5 0 0 1 18 7.5v6a1.5 1.5 0 0 1-1.5 1.5H15v3H5v-3H3.5A1.5 1.5 0 0 1 2 13.5v-6A1.5 1.5 0 0 1 3.5 6H5Zm2 2v2h6V4Zm0 9v3h6v-3Zm8-4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor"/></svg>
           Print chart
         </button>
-        <p class="print-hint">Tip: in the print window, choose <strong>landscape</strong>. To save a PDF instead of printing, choose <strong>“Save as PDF.”</strong></p>
+        <p class="print-hint">Your printer should pick <strong id="orientation-word">portrait</strong> on its own. If it doesn't, set it in the print window. To save a PDF instead of printing, choose <strong>“Save as PDF.”</strong></p>
 
         <div class="data-actions">
           <button type="button" class="btn btn-subtle" id="export-btn">Save a backup file</button>

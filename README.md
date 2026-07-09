@@ -33,7 +33,11 @@ section. Print it, stick it on the fridge, check the boxes.
 - **Time-of-day color bands.** Morning is dawn-amber, noon is sky-blue,
   evening is dusk-violet, bedtime is night-indigo — and every band also
   carries an icon and a label, so the chart still works from a grayscale
-  laser printer.
+  laser printer. On a chart long enough to need a second page, the band
+  reprints at the top, because a page that doesn't say *Morning* is a page
+  you can't safely act on.
+- **Portrait or landscape.** Portrait by default — it fits a binder and a
+  fridge door — and the columns re-proportion themselves if you switch.
 - **What you see is what prints.** The live preview *is* the printed page.
   No surprises at the printer.
 - **Safety details on the sheet.** Allergies, doctor and pharmacy phone

@@ -54,6 +54,15 @@
   --sheet-rule-strong: #37424A;
   --sheet-font: 17px; /* "Large" default; JS swaps via [data-size] */
 
+  /* Real printable widths at 96dpi, taking the narrower of US Letter and A4
+     so a chart laid out here fits both without reflowing at the printer:
+       portrait  = A4 210mm  − 24mm margins ≈ 703px
+       landscape = Letter 11in − 24mm margins ≈ 965px */
+  --sheet-width: 700px;
+  --day-col: 2.5em;
+  --check-size: 1.3em;
+  --sheet-pad: 34px 32px 28px;
+
   --radius-card: 16px;
   --radius-input: 10px;
   --shadow-card: 0 1px 2px rgba(16, 42, 37, 0.06), 0 8px 24px rgba(16, 42, 37, 0.05);
@@ -461,6 +470,35 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 }
 .example-offer p { margin-bottom: 10px; }
 
+/* ---------- Paper direction ---------- */
+.orientation-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.orientation-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 12px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 400;
+}
+.orientation-option input { margin: 0; accent-color: var(--green); width: 17px; height: 17px; flex: none; cursor: pointer; }
+.orientation-art {
+  flex: none;
+  border: 2px solid var(--ink-soft);
+  border-radius: 2px;
+  background: #fff;
+}
+.orientation-art.portrait { width: 20px; height: 26px; }
+.orientation-art.landscape { width: 26px; height: 20px; }
+.orientation-text strong { display: block; font-size: 15.5px; }
+.orientation-text small { display: block; font-size: 13px; color: var(--ink-soft); line-height: 1.35; }
+.orientation-option:has(input:checked) { border-color: var(--green); background: var(--green-tint); }
+.orientation-option:has(input:checked) .orientation-art { border-color: var(--green); }
+.orientation-option:has(input:focus-visible) { outline: 3px solid var(--green); outline-offset: 2px; }
+
 /* ---------- Print size options ---------- */
 .size-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .size-option {
@@ -517,12 +555,12 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 
 /* ---------- The sheet (the printed artifact) ---------- */
 .sheet {
-  width: 1060px;
+  width: var(--sheet-width);
   transform-origin: top left;
   background: #fff;
   border-radius: 4px;
   box-shadow: var(--shadow-paper);
-  padding: 42px 46px 36px;
+  padding: var(--sheet-pad);
   font-size: var(--sheet-font);
   line-height: 1.4;
   color: #16232C;
@@ -530,6 +568,22 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 .sheet[data-size="standard"] { --sheet-font: 14px; }
 .sheet[data-size="large"] { --sheet-font: 17px; }
 .sheet[data-size="xl"] { --sheet-font: 20px; }
+
+.sheet[data-orientation="portrait"] {
+  --sheet-width: 700px;
+  --day-col: 2.5em;
+  --check-size: 1.3em;
+  --sheet-pad: 34px 32px 28px;
+}
+.sheet[data-orientation="landscape"] {
+  --sheet-width: 960px;
+  --day-col: 3.9em;
+  --check-size: 1.45em;
+  --sheet-pad: 42px 46px 36px;
+}
+/* Extra large in portrait is the tightest case: give the day columns less
+   and let the medicine name wrap rather than squeeze the checkboxes. */
+.sheet[data-orientation="portrait"][data-size="xl"] { --day-col: 2.3em; --check-size: 1.2em; }
 
 .sheet-head {
   display: flex;
@@ -551,8 +605,13 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 }
 .sheet-meta .allergies { font-weight: 700; }
 
-/* Time-of-day slots */
+/* Time-of-day slots. The band sits in <thead> so print repeats it per page. */
 .slot { margin-top: 1.5em; }
+.band-row td {
+  padding: 0 0 2px;
+  border: 0;
+  background: none;
+}
 .slot-head {
   display: flex;
   align-items: center;
@@ -582,7 +641,7 @@ input::placeholder { color: #7C8A88; opacity: 1; }
   border-bottom: 2px solid var(--sheet-rule-strong);
 }
 .slot thead th.med-col { text-align: left; padding-left: 4px; }
-.slot .day-col { width: 3.9em; }
+.slot .day-col { width: var(--day-col); }
 
 .slot tbody tr:nth-child(even) { background: #F7F9F8; }
 .slot tbody th, .slot tbody td {
@@ -609,7 +668,7 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 }
 .checkbox {
   display: inline-block;
-  width: 1.45em; height: 1.45em;
+  width: var(--check-size); height: var(--check-size);
   border: 2px solid #5A6663;
   border-radius: 4px;
   background: #fff;
@@ -744,12 +803,9 @@ input::placeholder { color: #7C8A88; opacity: 1; }
    PRINT — the whole point.
    Only the sheet prints. Bands keep their tints where the browser allows;
    every encoding also survives pure grayscale (icons + labels + borders).
+   The @page rule lives in a <style id="page-rule"> element so the chosen
+   orientation can be swapped at runtime; `size` accepts no custom property.
    ========================================================================== */
-@page {
-  size: landscape;
-  margin: 10mm 12mm;
-}
-
 @media print {
   html, body { background: #fff; }
 
@@ -780,8 +836,11 @@ input::placeholder { color: #7C8A88; opacity: 1; }
     print-color-adjust: exact;
   }
 
+  /* thead repeats per page by default, carrying the band with it. */
   .slot { break-inside: auto; }
-  .slot-head { break-after: avoid-page; break-inside: avoid-page; }
-  .slot tbody tr { break-inside: avoid-page; }
-  .sheet-foot { break-inside: avoid-page; }
+  .slot thead { break-inside: avoid; break-after: avoid; }
+  .slot-head { break-inside: avoid; }
+  .slot tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  .sheet-foot { break-inside: avoid; page-break-inside: avoid; }
+  .sheet-head { break-after: avoid; }
 }

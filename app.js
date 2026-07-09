@@ -111,7 +111,7 @@ function chipSvg(shape, colorId) {
 const defaultState = () => ({
   person: { name: "", week: "", allergies: "", doctor: "", pharmacy: "" },
   meds: [],
-  options: { textSize: "large" },
+  options: { textSize: "large", orientation: "portrait" },
 });
 
 let state = loadState();
@@ -265,9 +265,17 @@ function medCell(med, { withNotes = true } = {}) {
   </div>`;
 }
 
+/* `@page { size: … }` accepts no custom property, so the rule is rewritten. */
+function applyPageRule() {
+  const orientation = state.options.orientation;
+  $("#page-rule").textContent = `@page { size: ${orientation}; margin: 10mm 12mm; }`;
+  $("#orientation-word").textContent = orientation;
+}
+
 function renderSheet() {
   const sheet = $("#sheet");
   sheet.dataset.size = state.options.textSize;
+  sheet.dataset.orientation = state.options.orientation;
 
   const p = state.person;
   const title = p.name
@@ -294,13 +302,19 @@ function renderSheet() {
         </tr>`
       )
       .join("");
+    /* The band lives inside <thead> so the browser repeats it on every printed
+       page. A chart page that doesn't say "Morning" is a chart page you can't
+       safely act on. The caption names the table for screen readers. */
     body += `<section class="slot slot-${slot.id}">
-      <h3 class="slot-head">${SLOT_ICONS[slot.id]}${slot.label}</h3>
       <table>
-        <thead><tr>
-          <th class="med-col" scope="col">Medicine</th>
-          ${DAYS.map((d) => `<th class="day-col" scope="col">${d}</th>`).join("")}
-        </tr></thead>
+        <caption class="visually-hidden">${slot.label} medications</caption>
+        <thead>
+          <tr class="band-row"><td colspan="${DAYS.length + 1}" aria-hidden="true"><span class="slot-head">${SLOT_ICONS[slot.id]}${slot.label}</span></td></tr>
+          <tr>
+            <th class="med-col" scope="col">Medicine</th>
+            ${DAYS.map((d) => `<th class="day-col" scope="col">${d}</th>`).join("")}
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>
     </section>`;
@@ -318,13 +332,16 @@ function renderSheet() {
       )
       .join("");
     body += `<section class="slot slot-prn">
-      <h3 class="slot-head">${SLOT_ICONS.prn}Only as needed</h3>
       <table>
-        <thead><tr>
-          <th scope="col" style="width:45%">Medicine</th>
-          <th scope="col">When to use it</th>
-          <th scope="col" style="width:22%">Most in 24 hours</th>
-        </tr></thead>
+        <caption class="visually-hidden">Medications taken only as needed</caption>
+        <thead>
+          <tr class="band-row"><td colspan="3" aria-hidden="true"><span class="slot-head">${SLOT_ICONS.prn}Only as needed</span></td></tr>
+          <tr>
+            <th scope="col" style="width:45%">Medicine</th>
+            <th scope="col">When to use it</th>
+            <th scope="col" style="width:22%">Most in 24 hours</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>
     </section>`;
@@ -354,15 +371,15 @@ function renderSheet() {
 
 /* ---------- Sheet scaling (preview only; print uses real size) ---------- */
 
-const SHEET_DESIGN_WIDTH = 1060;
-
 const SHEET_MIN_SCALE = 0.55; /* below this the preview is unreadable; scroll instead */
 
 function updateSheetScale() {
   const viewport = $("#sheet-viewport");
   const sheet = $("#sheet");
-  const width = viewport.clientWidth;
-  const scale = Math.max(SHEET_MIN_SCALE, Math.min(1, width / SHEET_DESIGN_WIDTH));
+  /* offsetWidth ignores the transform, so it is the sheet's true paper width. */
+  const designWidth = sheet.offsetWidth;
+  if (!designWidth) return;
+  const scale = Math.max(SHEET_MIN_SCALE, Math.min(1, viewport.clientWidth / designWidth));
   sheet.style.transform = `scale(${scale})`;
   viewport.style.height = sheet.offsetHeight * scale + "px";
 }
@@ -525,11 +542,14 @@ function renderPersonFields() {
   });
   const sizeInput = document.querySelector(`input[name="text-size"][value="${state.options.textSize}"]`);
   if (sizeInput) sizeInput.checked = true;
+  const orientInput = document.querySelector(`input[name="orientation"][value="${state.options.orientation}"]`);
+  if (orientInput) orientInput.checked = true;
 }
 
 function renderAll() {
   renderMedList();
   renderSheet();
+  applyPageRule();
 }
 
 /* ---------- Events ---------- */
@@ -556,6 +576,16 @@ function init() {
     input.addEventListener("change", () => {
       state.options.textSize = input.value;
       renderSheet();
+      saveState();
+    });
+  });
+
+  /* Paper direction */
+  document.querySelectorAll('input[name="orientation"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      state.options.orientation = input.value;
+      renderSheet();
+      applyPageRule();
       saveState();
     });
   });
@@ -687,10 +717,11 @@ function init() {
     setSaveIndicator("");
   });
 
-  /* Preview scaling */
+  /* Preview scaling. Observe the pane, not the viewport — updateSheetScale
+     writes the viewport's height, and observing it would feed back. */
   window.addEventListener("resize", updateSheetScale);
   if (typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(updateSheetScale).observe($("#sheet-viewport"));
+    new ResizeObserver(updateSheetScale).observe(document.querySelector(".preview-pane"));
   }
 }
 
