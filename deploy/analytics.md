@@ -45,11 +45,11 @@ is the correct trade for this project.
 
 ## First: make sure nginx is writing them
 
-Forge's default site config contains `access_log off;`. **Delete that line.**
-It does not get overridden by the `access_log … privacy;` directive in
-`nginx.conf` — nginx's `off` cancels *every* `access_log` directive at the same
-level, whichever order they appear in. Left in place, it logs nothing, silently,
-and the log file is never even created.
+Forge's default site config contains `access_log off;`. **Replace that line**
+with the `access_log … privacy;` directive from `nginx.conf` — do not add ours
+beneath it. nginx's `off` cancels *every* `access_log` directive at the same
+level, whichever order they appear in. Left in place, it logs nothing,
+silently, and the log file is never even created.
 
 ## Reading the logs
 
@@ -59,11 +59,12 @@ Install [GoAccess](https://goaccess.io) once, on the server:
 sudo apt install goaccess
 ```
 
-Then, over SSH:
+Then, over SSH. Forge deploys atomically, so the checkout lives behind the
+`current` symlink:
 
 ```sh
 ssh forge@<your-server>
-cd paperpillbox.com
+cd paperpillbox.com/current
 ./deploy/stats.sh                      # interactive dashboard in the terminal
 ./deploy/stats.sh --html ~/report.html # a report to take home
 ```
@@ -89,6 +90,24 @@ so history runs back as far as Ubuntu's default nginx policy keeps — about two
 weeks. If you want longer, raise `rotate` in `/etc/logrotate.d/nginx`.
 
 Nothing else stores this data. It expires on its own, which is the point.
+
+## One leak Forge leaves behind
+
+The `www` → apex and http → https redirect server blocks that Forge generates
+declare no `access_log` of their own, so they inherit nginx's http-level
+default — a log shared with every other site on the box, holding **full,
+untruncated IPs**. Anyone who types the bare domain, or follows an old `www`
+link, is recorded there before being redirected.
+
+Add `access_log off;` inside each of these two server blocks:
+
+```
+/etc/nginx/forge-conf/<id>/<domain>/before/ssl_redirect.conf
+/etc/nginx/forge-conf/<id>/<domain>/before/redirect.conf
+```
+
+Forge may rewrite them when a certificate is reissued, so check again after any
+SSL operation.
 
 ## If the numbers look wrong
 

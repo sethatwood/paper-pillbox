@@ -49,15 +49,22 @@ Leave *Generate a site deploy key* off; the repository is public, so Forge
 clones it over your existing GitHub connection.
 
 Install the repository from `sethatwood/paper-pillbox`, branch `main`, and
-leave *Install Composer dependencies* unchecked. Then replace the deploy
-script with, in its entirety:
-
-```sh
-cd /home/forge/paperpillbox.com
-git pull origin $FORGE_SITE_BRANCH
-```
+leave *Install Composer dependencies* unchecked. Keep Forge's default deploy
+script: it performs an atomic release, checking the repo out into
+`releases/<id>/` and swinging a `current` symlink at it. There is nothing to
+build, so there is nothing to add.
 
 Enable **Quick Deploy** so a push to `main` publishes.
+
+That layout is worth knowing before you go looking for files on the server:
+
+```
+/home/forge/paperpillbox.com/
+├── current -> releases/<release-id>     # what nginx serves
+└── releases/<release-id>/
+    ├── public/                      # the web root
+    └── deploy/stats.sh              # ~/paperpillbox.com/current/deploy/stats.sh
+```
 
 ## 3. SSL, then nginx — in that order
 
@@ -65,19 +72,34 @@ Enable **Quick Deploy** so a push to `main` publishes.
 `www.paperpillbox.com`.
 
 **Do this before editing the nginx config, not after.** Activating a
-certificate makes Forge rewrite the site's nginx file, and any custom
-directives added beforehand go with it. The same is true of later Forge
-operations that touch the site: if the CSP header or the access log ever
-vanishes, this is why. The `curl` checks in step 6 are how you find out.
+certificate makes Forge rewrite the site's nginx file. Forge also generates the
+`www` → apex and http → https redirects at this point, so you do not have to
+write them.
 
-Now paste the two marked blocks from [`nginx.conf`](nginx.conf) into *Site →
-Edit Files → Edit Nginx Configuration*. Note that they go in **different
-places** — `map` and `log_format` are only valid above the `server { }` block.
-Delete Forge's `access_log off;` line while you are in there; it cancels our
-access log no matter what order the directives appear in.
+Then apply the two parts of [`nginx.conf`](nginx.conf), **PART 1 first**:
 
-Add the `www` redirect as a separate server block so `www` lands on the
-canonical apex the page already declares in `<link rel="canonical">`.
+- **PART 1** → `/etc/nginx/conf.d/paperpillbox-privacy.conf`, created over SSH.
+  `map` and `log_format` are only valid in nginx's http context, so they cannot
+  live in the site config. Writing there needs `sudo` and the server's sudo
+  password, which Forge shows under *Server → Settings*.
+- **PART 2** → *Site → Edit Files → Edit Nginx Configuration*, replacing the
+  whole file. Keep Forge's `ssl_*` lines, the `include forge-conf/<id>/server/*;`
+  line, and the `error_log` path exactly as Forge wrote them; the site id
+  differs per install.
+
+PART 2 references the `privacy` log format and `$pp_cache` from PART 1. Apply
+them the other way round and `nginx -t` fails, and Forge refuses to reload.
+Run `sudo nginx -t` after PART 1 and wait for *"test is successful"*.
+
+The single most consequential edit is **replacing** Forge's `access_log off;`
+rather than adding a line beneath it. `off` cancels *every* `access_log`
+directive at the same level, whatever order they appear in. Leave it and you
+get no log file at all, silently, and nothing to analyse.
+
+If you would rather your directives survive Forge regenerating the site config,
+put PART 2's contents in a file under `/etc/nginx/forge-conf/<id>/server/`
+instead. Forge includes that directory from inside the server block and does
+not overwrite it.
 
 The one header that matters is:
 

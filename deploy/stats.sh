@@ -36,12 +36,20 @@ if ! command -v goaccess >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! sudo test -e "${LOG_DIR}/${SITE}-access.log"; then
+# On Forge the logs are owned by forge:adm and readable directly. Only reach
+# for sudo when they are not, so the common path never prompts for a password.
+SUDO=""
+if [ ! -r "${LOG_DIR}/${SITE}-access.log" ]; then
+  SUDO="sudo"
+fi
+
+if ! ${SUDO} test -e "${LOG_DIR}/${SITE}-access.log"; then
   echo "No access log at ${LOG_DIR}/${SITE}-access.log" >&2
   echo >&2
   echo "Almost always this means Forge's 'access_log off;' is still in the" >&2
   echo "site's nginx config. It cancels every access_log directive at the" >&2
-  echo "same level, whatever order they are in. Delete that line." >&2
+  echo "same level, whatever order they are in. Replace that line, do not" >&2
+  echo "add ours beneath it. See nginx.conf, PART 2." >&2
   exit 1
 fi
 
@@ -60,11 +68,11 @@ if [ -n "${html_out}" ]; then
       echo "Refusing to write inside the web root — the report would be public." >&2
       exit 1 ;;
   esac
-  sudo sh -c "zcat -f ${LOG_DIR}/${SITE}-access.log*" \
+  ${SUDO} sh -c "zcat -f ${LOG_DIR}/${SITE}-access.log*" \
     | goaccess - "${args[@]}" -o "${html_out}"
   echo "Wrote ${html_out}"
   echo "Fetch it with:  scp forge@<server>:${html_out} ."
 else
-  sudo sh -c "zcat -f ${LOG_DIR}/${SITE}-access.log*" \
+  ${SUDO} sh -c "zcat -f ${LOG_DIR}/${SITE}-access.log*" \
     | goaccess - "${args[@]}"
 fi
