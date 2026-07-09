@@ -43,34 +43,58 @@ household does not. The honest cost is that unique-visitor counts get slightly
 fuzzy, since everyone behind the same `/24` collapses into one address — which
 is the correct trade for this project.
 
+## First: make sure nginx is writing them
+
+Forge's default site config contains `access_log off;`. **Delete that line.**
+It does not get overridden by the `access_log … privacy;` directive in
+`nginx.conf` — nginx's `off` cancels *every* `access_log` directive at the same
+level, whichever order they appear in. Left in place, it logs nothing, silently,
+and the log file is never even created.
+
 ## Reading the logs
 
-Install [GoAccess](https://goaccess.io) once:
+Install [GoAccess](https://goaccess.io) once, on the server:
 
 ```sh
 sudo apt install goaccess
 ```
 
-Then, over SSH, for an interactive dashboard in the terminal:
+Then, over SSH:
 
 ```sh
-goaccess /var/log/nginx/paperpillbox.com-access.log \
-  --log-format='%h - [%d:%t %^] "%r" %s %b "%R" "%u"' \
-  --date-format='%d/%b/%Y' \
-  --time-format='%H:%M:%S' \
-  --ignore-crawlers
+ssh forge@<your-server>
+cd paperpillbox.com
+./deploy/stats.sh                      # interactive dashboard in the terminal
+./deploy/stats.sh --html ~/report.html # a report to take home
 ```
 
-The `--log-format` must match the `privacy` format in `nginx.conf`. If you
-change one, change the other; GoAccess reports mismatches as failed parses
-rather than guessing.
+`q` quits the dashboard. Arrow keys and `TAB` move between panels: unique
+visitors per day, top pages, referring sites, countries, browsers, and
+404s — the last of which is the most useful of the lot when someone links to
+the site incorrectly.
 
-For an HTML report you can download and read locally, add `-o report.html` and
-`scp` it off the server. Write it somewhere **outside the web root** —
-`~/reports/` rather than `~/paperpillbox.com/` — so it is never served.
+To read the HTML report on your own machine:
 
-Log rotation is Forge's default logrotate policy. Rotated logs are the only
-place this data lives, and it expires on its own.
+```sh
+scp forge@<your-server>:~/report.html . && open report.html
+```
+
+Write it to your home directory, never inside `~/paperpillbox.com/` — anything
+in the web root is served to the public. `stats.sh` refuses to do that.
+
+## Retention
+
+`stats.sh` reads today's log plus every rotated one that logrotate still has,
+so history runs back as far as Ubuntu's default nginx policy keeps — about two
+weeks. If you want longer, raise `rotate` in `/etc/logrotate.d/nginx`.
+
+Nothing else stores this data. It expires on its own, which is the point.
+
+## If the numbers look wrong
+
+GoAccess reports a **failed parse** count rather than guessing at a line it
+cannot read. If that number is not zero, `LOG_FORMAT` in `stats.sh` has drifted
+from `log_format privacy` in `nginx.conf`. They must match exactly.
 
 ## What this cannot tell you
 
