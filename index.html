@@ -27,6 +27,7 @@
   <meta name="twitter:description" content="Free medication chart maker. Large print, easy to read, completely private — nothing you type ever leaves your browser.">
   <meta name="twitter:image" content="https://paperpillbox.com/og-image.png">
   <meta name="twitter:image:alt" content="A large-print weekly medication chart with morning, evening and bedtime sections and a checkbox for each day.">
+
   <link rel="stylesheet" href="styles.css">
   <!-- @page can't read a custom property, so the orientation rule is swapped at runtime. -->
   <style id="page-rule">@page { size: portrait; margin: 10mm 12mm; }</style>
@@ -36,13 +37,13 @@
 
   <header class="masthead">
     <div class="masthead-inner">
-      <p class="wordmark">
+      <h1 class="wordmark">
         <svg class="wordmark-pill" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
           <rect x="3" y="10.5" width="26" height="11" rx="5.5" fill="#fff" stroke="currentColor" stroke-width="2"/>
           <path d="M16 10.5h7.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H16Z" fill="currentColor"/>
         </svg>
         Paper Pillbox
-      </p>
+      </h1>
       <p class="tagline">Make a medication chart that's easy to read — and print it.</p>
       <p class="privacy-note">
         <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4 7V5a4 4 0 0 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7Zm2 0h4V5a2 2 0 0 0-4 0Z" fill="currentColor"/></svg>
@@ -59,16 +60,16 @@
         <h2 id="who-heading"><span class="step" aria-hidden="true">1</span>Who is this chart for?</h2>
         <div class="field">
           <label for="person-name">Name</label>
-          <input id="person-name" type="text" autocomplete="off" placeholder="e.g., Mom, or Dad" data-person="name">
+          <input id="person-name" type="text" autocomplete="off" placeholder="like Mom or Dad" data-person="name">
         </div>
         <div class="field-row">
           <div class="field">
             <label for="person-week">Week of <span class="optional">(optional)</span></label>
-            <input id="person-week" type="text" autocomplete="off" placeholder="e.g., July 6 – 12" data-person="week">
+            <input id="person-week" type="text" autocomplete="off" placeholder="July 6 – 12" data-person="week">
           </div>
           <div class="field">
             <label for="person-allergies">Allergies <span class="optional">(optional)</span></label>
-            <input id="person-allergies" type="text" autocomplete="off" placeholder="e.g., penicillin" data-person="allergies">
+            <input id="person-allergies" type="text" autocomplete="off" placeholder="like penicillin" data-person="allergies">
           </div>
         </div>
         <div class="field-row">
@@ -89,18 +90,18 @@
         <form id="med-form" novalidate>
           <div class="field">
             <label for="med-name">Medication name</label>
-            <input id="med-name" type="text" autocomplete="off" placeholder="e.g., Metformin" required aria-describedby="med-name-error">
-            <p class="field-error" id="med-name-error" hidden>Please enter the medication's name.</p>
+            <input id="med-name" type="text" autocomplete="off" placeholder="like Metformin" required aria-describedby="med-name-error">
+            <p class="field-error" id="med-name-error" role="alert" hidden></p>
           </div>
 
           <div class="field-row">
             <div class="field">
               <label for="med-dose">Dose <span class="optional">(optional)</span></label>
-              <input id="med-dose" type="text" autocomplete="off" placeholder="e.g., 500 mg · 1 tablet">
+              <input id="med-dose" type="text" autocomplete="off" placeholder="500 mg, 1 tablet">
             </div>
             <div class="field">
               <label for="med-purpose">What it's for <span class="optional">(optional)</span></label>
-              <input id="med-purpose" type="text" autocomplete="off" placeholder="e.g., blood pressure">
+              <input id="med-purpose" type="text" autocomplete="off" placeholder="like blood pressure">
             </div>
           </div>
 
@@ -108,6 +109,7 @@
             <div class="field">
               <label for="med-shape">What it looks like</label>
               <select id="med-shape">
+                <option value="unknown" selected>Not sure yet</option>
                 <option value="round">Round tablet</option>
                 <option value="oval">Oval tablet</option>
                 <option value="capsule">Capsule</option>
@@ -128,10 +130,11 @@
 
           <fieldset class="field">
             <legend>Color</legend>
-            <div class="swatches" id="med-color" role="radiogroup"></div>
+            <div class="swatches" id="med-color"></div>
+            <p class="swatch-name" id="swatch-name" aria-live="polite"></p>
           </fieldset>
 
-          <fieldset class="field" aria-describedby="med-times-error">
+          <fieldset class="field">
             <legend>When is it taken?</legend>
             <div class="time-checks" id="med-times">
               <label class="time-check time-morning"><input type="checkbox" value="morning"><span class="time-check-label">Morning</span></label>
@@ -140,17 +143,17 @@
               <label class="time-check time-bedtime"><input type="checkbox" value="bedtime"><span class="time-check-label">Bedtime</span></label>
               <label class="time-check time-prn"><input type="checkbox" value="prn"><span class="time-check-label">Only as needed</span></label>
             </div>
-            <p class="field-error" id="med-times-error" hidden>Please pick at least one time of day.</p>
+            <p class="field-error" id="med-times-error" role="alert" hidden></p>
           </fieldset>
 
           <div class="field" id="max-per-day-field" hidden>
-            <label for="med-max">Most in 24 hours <span class="optional">(optional)</span></label>
-            <input id="med-max" type="text" autocomplete="off" placeholder="e.g., up to 3 doses">
+            <label for="med-max">Do not use more than <span class="optional">(optional)</span></label>
+            <input id="med-max" type="text" autocomplete="off" placeholder="3 doses in one day">
           </div>
 
           <div class="field">
             <label for="med-instructions">Special instructions <span class="optional">(optional)</span></label>
-            <input id="med-instructions" type="text" autocomplete="off" placeholder="e.g., with food">
+            <input id="med-instructions" type="text" autocomplete="off" placeholder="with food">
             <div class="quick-chips" aria-label="Common instructions">
               <button type="button" class="quick-chip" data-chip="With food">With food</button>
               <button type="button" class="quick-chip" data-chip="On an empty stomach">On an empty stomach</button>
@@ -168,6 +171,12 @@
         <div class="med-list-wrap">
           <h3 class="med-list-heading" id="med-list-heading" hidden>On this chart</h3>
           <ul class="med-list" id="med-list" aria-labelledby="meds-heading"></ul>
+
+          <div class="example-banner" id="example-banner" hidden>
+            <p><strong>This chart is showing example medications.</strong> Replace them with the real ones before you print.</p>
+            <button type="button" class="btn btn-subtle" id="clear-example">Clear the example</button>
+          </div>
+
           <div class="example-offer" id="example-offer">
             <p>Not sure where to start?</p>
             <button type="button" class="btn btn-subtle" id="load-example">Show me an example chart</button>
@@ -180,7 +189,7 @@
 
         <fieldset class="field">
           <legend>Paper direction</legend>
-          <div class="orientation-options" role="radiogroup">
+          <div class="orientation-options">
             <label class="orientation-option">
               <input type="radio" name="orientation" value="portrait" checked>
               <span class="orientation-art portrait" aria-hidden="true"></span>
@@ -196,7 +205,7 @@
 
         <fieldset class="field">
           <legend>Print size</legend>
-          <div class="size-options" role="radiogroup">
+          <div class="size-options">
             <label class="size-option"><input type="radio" name="text-size" value="standard"><span><strong>Standard</strong><small>Fits the most medications</small></span></label>
             <label class="size-option"><input type="radio" name="text-size" value="large" checked><span><strong>Large</strong><small>Easy on the eyes</small></span></label>
             <label class="size-option"><input type="radio" name="text-size" value="xl"><span><strong>Extra large</strong><small>For low vision</small></span></label>
@@ -242,9 +251,9 @@
     <button type="button" class="snackbar-action" id="snackbar-action" hidden>Undo</button>
   </div>
 
-  <dialog class="confirm-dialog" id="reset-dialog">
-    <h2>Start over?</h2>
-    <p>This clears the whole chart — every medication and every detail. If you might want it later, save a backup first.</p>
+  <dialog class="confirm-dialog" id="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-desc">
+    <h2 id="reset-title">Start over?</h2>
+    <p id="reset-desc">This clears the whole chart — every medication and every detail. If you might want it later, save a backup first.</p>
     <div class="dialog-actions">
       <button type="button" class="btn btn-subtle" id="reset-cancel">Keep my chart</button>
       <button type="button" class="btn btn-danger" id="reset-confirm">Clear everything</button>

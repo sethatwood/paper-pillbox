@@ -6,6 +6,8 @@
 /* ---------- Constants ---------- */
 
 const STORAGE_KEY = "paperpillbox:v1";
+const MAX_MEDS = 200;
+const MAX_FIELD = 200;
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -21,8 +23,11 @@ const SLOT_LABELS = {
   noon: "Noon",
   evening: "Evening",
   bedtime: "Bedtime",
-  prn: "As needed",
+  prn: "Only as needed",
 };
+
+const TEXT_SIZES = ["standard", "large", "xl"];
+const ORIENTATIONS = ["portrait", "landscape"];
 
 /* Simple line icons, drawn with currentColor so each band tints its own. */
 const SLOT_ICONS = {
@@ -54,6 +59,7 @@ const COLORS = [
 ];
 
 const SHAPE_LABELS = {
+  unknown: "Not sure yet",
   round: "Round tablet",
   oval: "Oval tablet",
   capsule: "Capsule",
@@ -66,6 +72,10 @@ const SHAPE_LABELS = {
   other: "Something else",
 };
 
+const SHAPE_IDS = Object.keys(SHAPE_LABELS);
+const COLOR_IDS = COLORS.map((c) => c.id);
+const SLOT_IDS = Object.keys(SLOT_LABELS);
+
 /* ---------- Pill chips ---------- */
 
 function chipSvg(shape, colorId) {
@@ -73,6 +83,10 @@ function chipSvg(shape, colorId) {
   const S = 'stroke="#3A4442" stroke-width="1.6"';
   let body = "";
   switch (shape) {
+    /* Asserts neither shape nor color: the user never told us either. */
+    case "unknown":
+      body = `<rect x="6" y="14" width="28" height="12" rx="6" fill="none" stroke="#3A4442" stroke-width="1.6" stroke-dasharray="3 2.5"/>`;
+      break;
     case "round":
       body = `<circle cx="20" cy="20" r="13" fill="${color}" ${S}/><path d="M8.5 20h23" stroke="#3A4442" stroke-width="1.2" opacity="0.5"/>`;
       break;
@@ -106,6 +120,15 @@ function chipSvg(shape, colorId) {
   return `<svg viewBox="0 0 40 40" role="img" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
+/* A grayscale laser flattens several pill colors to the same gray, so the
+   appearance is also spelled out in text beside the chip. */
+function appearanceText(med) {
+  if (med.shape === "unknown") return "";
+  const color = COLORS.find((c) => c.id === med.color);
+  const shape = SHAPE_LABELS[med.shape] || "";
+  return [color ? color.label.toLowerCase() : "", shape.toLowerCase()].filter(Boolean).join(" ");
+}
+
 /* ---------- State ---------- */
 
 const defaultState = () => ({
@@ -120,17 +143,65 @@ let storageOk = true;
 let lastDeleted = null;
 let snackbarTimer = null;
 
+function newId() {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : "id-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
+}
+
+/* Anything that has been outside this tab — localStorage, a backup file — is
+   untrusted. Normalize it into exactly the shape the app expects, or drop it.
+   This is what stops a hand-edited backup from injecting markup, poisoning a
+   CSS selector, or leaving the app permanently unable to render. */
+function cleanText(value) {
+  return typeof value === "string" ? value.slice(0, MAX_FIELD) : "";
+}
+
+function cleanMed(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const name = cleanText(raw.name).trim();
+  if (!name) return null;
+  const times = Array.isArray(raw.times) ? raw.times.filter((t) => SLOT_IDS.indexOf(t) !== -1) : [];
+  if (!times.length) return null;
+  return {
+    id: newId(),
+    name,
+    dose: cleanText(raw.dose),
+    purpose: cleanText(raw.purpose),
+    shape: SHAPE_IDS.indexOf(raw.shape) !== -1 ? raw.shape : "unknown",
+    color: COLOR_IDS.indexOf(raw.color) !== -1 ? raw.color : "white",
+    times,
+    instructions: cleanText(raw.instructions),
+    maxPerDay: cleanText(raw.maxPerDay),
+    example: raw.example === true,
+  };
+}
+
+function normalizeState(raw) {
+  const base = defaultState();
+  const person = {};
+  for (const key of Object.keys(base.person)) {
+    person[key] = cleanText(raw && raw.person ? raw.person[key] : "");
+  }
+  const meds = Array.isArray(raw && raw.meds)
+    ? raw.meds.slice(0, MAX_MEDS).map(cleanMed).filter(Boolean)
+    : [];
+  const options = (raw && raw.options) || {};
+  return {
+    person,
+    meds,
+    options: {
+      textSize: TEXT_SIZES.indexOf(options.textSize) !== -1 ? options.textSize : "large",
+      orientation: ORIENTATIONS.indexOf(options.orientation) !== -1 ? options.orientation : "portrait",
+    },
+  };
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    const base = defaultState();
-    return {
-      person: { ...base.person, ...(parsed.person || {}) },
-      meds: Array.isArray(parsed.meds) ? parsed.meds : [],
-      options: { ...base.options, ...(parsed.options || {}) },
-    };
+    return normalizeState(JSON.parse(raw));
   } catch {
     return defaultState();
   }
@@ -143,27 +214,22 @@ function saveState() {
     setSaveIndicator("Saved on this device");
   } catch {
     storageOk = false;
-    setSaveIndicator("Couldn't save here — use “Save a backup file”");
+    setSaveIndicator("Can’t save on this device — your chart will disappear when you close this page. Use “Save a backup file” to keep it.");
   }
-}
-
-function newId() {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : "id-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
 }
 
 /* ---------- Helpers ---------- */
 
 const $ = (sel) => document.querySelector(sel);
 
+/* Global-regex form: replaceAll is ES2021 and this runs on old tablets. */
 function escapeHtml(str) {
   return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function todayLong() {
@@ -174,8 +240,14 @@ function todayLong() {
   });
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function medNotes(med) {
   const parts = [];
+  const look = appearanceText(med);
+  if (look) parts.push(look);
   if (med.instructions) parts.push(med.instructions);
   if (med.purpose) parts.push((parts.length ? "for " : "For ") + med.purpose);
   return parts.join(" — ");
@@ -185,8 +257,14 @@ function medNotes(med) {
 function prnWhen(med) {
   const parts = [];
   if (med.purpose) parts.push("For " + med.purpose);
-  if (med.instructions) parts.push(parts.length ? med.instructions.charAt(0).toLowerCase() + med.instructions.slice(1) : med.instructions);
+  if (med.instructions) {
+    parts.push(parts.length ? med.instructions.charAt(0).toLowerCase() + med.instructions.slice(1) : med.instructions);
+  }
   return parts.join(" — ");
+}
+
+function hasExamples() {
+  return state.meds.some((m) => m.example);
 }
 
 function setSaveIndicator(text) {
@@ -204,15 +282,20 @@ function showSnackbar(text, { undo = false } = {}) {
   $("#snackbar-text").textContent = text;
   action.hidden = !undo;
   bar.hidden = false;
-  snackbarTimer = setTimeout(() => {
-    bar.hidden = true;
-    lastDeleted = null;
-  }, 8000);
+  /* A snackbar carrying Undo is the only path back from a delete. It waits
+     until the next message rather than racing a timer the user can't see. */
+  if (!undo) {
+    snackbarTimer = setTimeout(() => {
+      bar.hidden = true;
+      lastDeleted = null;
+    }, 12000);
+  }
 }
 
 function hideSnackbar() {
   clearTimeout(snackbarTimer);
   $("#snackbar").hidden = true;
+  lastDeleted = null;
 }
 
 /* ---------- Rendering: medication list ---------- */
@@ -225,23 +308,23 @@ const TRASH_ICON =
 function renderMedList() {
   const list = $("#med-list");
   const heading = $("#med-list-heading");
-  const offer = $("#example-offer");
 
   heading.hidden = state.meds.length === 0;
-  offer.hidden = state.meds.length !== 0;
+  $("#example-offer").hidden = state.meds.length !== 0;
+  $("#example-banner").hidden = !hasExamples();
 
   list.innerHTML = state.meds
     .map((med) => {
       const dose = med.dose ? ` <span class="med-item-dose">— ${escapeHtml(med.dose)}</span>` : "";
-      const badges = Object.keys(SLOT_LABELS)
-        .filter((slot) => med.times.includes(slot))
+      const badges = SLOT_IDS.filter((slot) => med.times.includes(slot))
         .map((slot) => `<span class="time-badge ${slot}">${SLOT_LABELS[slot]}</span>`)
         .join("");
+      const example = med.example ? '<span class="example-badge">Example</span>' : "";
       const editing = med.id === editingId ? " med-item-editing" : "";
-      return `<li class="med-item${editing}" data-id="${med.id}">
+      return `<li class="med-item${editing}" data-id="${escapeHtml(med.id)}">
         <span class="med-item-chip">${chipSvg(med.shape, med.color)}</span>
         <div class="med-item-body">
-          <p class="med-item-name">${escapeHtml(med.name)}${dose}</p>
+          <p class="med-item-name">${escapeHtml(med.name)}${dose}${example}</p>
           <div class="med-item-times">${badges}</div>
         </div>
         <div class="med-item-actions">
@@ -257,7 +340,7 @@ function renderMedList() {
 
 function medCell(med, { withNotes = true } = {}) {
   const dose = med.dose ? ` <span class="med-dose">${escapeHtml(med.dose)}</span>` : "";
-  const notes = withNotes ? medNotes(med) : "";
+  const notes = withNotes ? medNotes(med) : appearanceText(med);
   const notesHtml = notes ? `<span class="med-notes">${escapeHtml(notes)}</span>` : "";
   return `<div class="med-cell">
     <span class="chip">${chipSvg(med.shape, med.color)}</span>
@@ -265,11 +348,19 @@ function medCell(med, { withNotes = true } = {}) {
   </div>`;
 }
 
-/* `@page { size: … }` accepts no custom property, so the rule is rewritten. */
-function applyPageRule() {
-  const orientation = state.options.orientation;
-  $("#page-rule").textContent = `@page { size: ${orientation}; margin: 10mm 12mm; }`;
-  $("#orientation-word").textContent = orientation;
+/* Rides along in the repeating band so a loose continuation page can still be
+   matched to a person. */
+function identityLine() {
+  const bits = [];
+  if (state.person.name) bits.push(state.person.name);
+  if (state.person.allergies) bits.push("allergies: " + state.person.allergies);
+  return bits.join(" · ");
+}
+
+function bandCell(slotId, label, colspan) {
+  const ident = identityLine();
+  const identHtml = ident ? `<span class="slot-ident">${escapeHtml(ident)}</span>` : "";
+  return `<tr class="band-row"><td colspan="${colspan}" aria-hidden="true"><span class="slot-head">${SLOT_ICONS[slotId]}<span class="slot-name">${label}</span>${identHtml}</span></td></tr>`;
 }
 
 function renderSheet() {
@@ -278,9 +369,7 @@ function renderSheet() {
   sheet.dataset.orientation = state.options.orientation;
 
   const p = state.person;
-  const title = p.name
-    ? `Medication chart for ${escapeHtml(p.name)}`
-    : "Medication chart";
+  const title = p.name ? `Medication chart for ${escapeHtml(p.name)}` : "Medication chart";
   const week = p.week ? `<p class="sheet-week">Week of ${escapeHtml(p.week)}</p>` : "";
 
   const metaBits = [];
@@ -288,6 +377,11 @@ function renderSheet() {
   if (p.doctor) metaBits.push(`<span>Doctor: ${escapeHtml(p.doctor)}</span>`);
   if (p.pharmacy) metaBits.push(`<span>Pharmacy: ${escapeHtml(p.pharmacy)}</span>`);
   const meta = metaBits.length ? `<div class="sheet-meta">${metaBits.join("")}</div>` : "";
+
+  /* The preview is the print artifact, so the warning has to print too. */
+  const sample = hasExamples()
+    ? `<p class="sheet-sample">Sample chart — replace these with the real medications before using it.</p>`
+    : "";
 
   let body = "";
 
@@ -303,13 +397,13 @@ function renderSheet() {
       )
       .join("");
     /* The band lives inside <thead> so the browser repeats it on every printed
-       page. A chart page that doesn't say "Morning" is a chart page you can't
-       safely act on. The caption names the table for screen readers. */
+       page. A chart page that doesn't say "Morning" is a page you can't safely
+       act on. The caption names the table for screen readers. */
     body += `<section class="slot slot-${slot.id}">
       <table>
         <caption class="visually-hidden">${slot.label} medications</caption>
         <thead>
-          <tr class="band-row"><td colspan="${DAYS.length + 1}" aria-hidden="true"><span class="slot-head">${SLOT_ICONS[slot.id]}${slot.label}</span></td></tr>
+          ${bandCell(slot.id, slot.label, DAYS.length + 1)}
           <tr>
             <th class="med-col" scope="col">Medicine</th>
             ${DAYS.map((d) => `<th class="day-col" scope="col">${d}</th>`).join("")}
@@ -335,11 +429,11 @@ function renderSheet() {
       <table>
         <caption class="visually-hidden">Medications taken only as needed</caption>
         <thead>
-          <tr class="band-row"><td colspan="3" aria-hidden="true"><span class="slot-head">${SLOT_ICONS.prn}Only as needed</span></td></tr>
+          ${bandCell("prn", "Only as needed", 3)}
           <tr>
             <th scope="col" style="width:45%">Medicine</th>
             <th scope="col">When to use it</th>
-            <th scope="col" style="width:22%">Most in 24 hours</th>
+            <th scope="col" style="width:24%">Do not use more than</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -350,7 +444,7 @@ function renderSheet() {
   if (!state.meds.length) {
     body = `<div class="sheet-empty">
       <strong>Your chart appears here as you build it</strong>
-      Add a medication on the left — the preview is exactly what will print.
+      Add your first medication in step 2 — this preview is exactly what will print.
     </div>`;
   }
 
@@ -360,6 +454,7 @@ function renderSheet() {
       ${week}
     </header>
     ${meta}
+    ${sample}
     ${body}
     <footer class="sheet-foot">
       <p class="safety">Always follow the directions from your doctor or pharmacist.</p>
@@ -384,16 +479,31 @@ function updateSheetScale() {
   viewport.style.height = sheet.offsetHeight * scale + "px";
 }
 
+/* `@page { size: … }` accepts no custom property, so the rule is rewritten. */
+function applyPageRule() {
+  const orientation = state.options.orientation;
+  $("#page-rule").textContent = `@page { size: ${orientation}; margin: 10mm 12mm; }`;
+  $("#orientation-word").textContent = orientation;
+}
+
 /* ---------- Form ---------- */
 
 function renderSwatches() {
   const wrap = $("#med-color");
   wrap.innerHTML = COLORS.map(
-    (c, i) => `<label class="swatch" title="${c.label}">
+    (c, i) => `<label class="swatch">
       <input type="radio" name="med-color" value="${c.id}" ${i === 0 ? "checked" : ""} aria-label="${c.label}">
       <span class="swatch-dot" style="background:${c.hex}"></span>
     </label>`
   ).join("");
+}
+
+/* Compare values instead of building selector strings: an untrusted value must
+   never reach querySelector, where bad syntax throws and takes the page down. */
+function checkByValue(name, value) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+    input.checked = input.value === value;
+  });
 }
 
 function selectedColor() {
@@ -406,12 +516,16 @@ function selectedTimes() {
 }
 
 function updateChipPreview() {
-  $("#chip-preview").innerHTML = chipSvg($("#med-shape").value, selectedColor());
+  const shape = $("#med-shape").value;
+  const color = selectedColor();
+  $("#chip-preview").innerHTML = chipSvg(shape, color);
+  const c = COLORS.find((x) => x.id === color);
+  $("#swatch-name").textContent =
+    shape === "unknown" ? "Not described yet" : `${c ? c.label : ""} · ${SHAPE_LABELS[shape] || ""}`;
 }
 
 function updateMaxField() {
-  const isPrn = selectedTimes().includes("prn");
-  $("#max-per-day-field").hidden = !isPrn;
+  $("#max-per-day-field").hidden = !selectedTimes().includes("prn");
 }
 
 function readForm() {
@@ -432,8 +546,7 @@ function fillForm(med) {
   $("#med-dose").value = med.dose || "";
   $("#med-purpose").value = med.purpose || "";
   $("#med-shape").value = med.shape;
-  const colorInput = document.querySelector(`input[name="med-color"][value="${med.color}"]`);
-  if (colorInput) colorInput.checked = true;
+  checkByValue("med-color", med.color);
   document.querySelectorAll("#med-times input").forEach((input) => {
     input.checked = med.times.includes(input.value);
   });
@@ -445,29 +558,39 @@ function fillForm(med) {
 
 function clearForm() {
   $("#med-form").reset();
-  document.querySelector('input[name="med-color"][value="white"]').checked = true;
+  checkByValue("med-color", "white");
   clearFormErrors();
   updateChipPreview();
   updateMaxField();
 }
 
+function showError(el, message) {
+  el.textContent = message;
+  el.hidden = false;
+}
+
 function clearFormErrors() {
   $("#med-name-error").hidden = true;
   $("#med-times-error").hidden = true;
+  $("#med-name").removeAttribute("aria-invalid");
   $("#med-name").closest(".field").classList.remove("field-invalid");
+  document.querySelectorAll("#med-times input").forEach((i) => i.removeAttribute("aria-invalid"));
 }
 
 function validateForm(data) {
   clearFormErrors();
   let firstInvalid = null;
   if (!data.name) {
-    $("#med-name-error").hidden = false;
+    showError($("#med-name-error"), "Please enter the medication's name.");
+    $("#med-name").setAttribute("aria-invalid", "true");
     $("#med-name").closest(".field").classList.add("field-invalid");
     firstInvalid = $("#med-name");
   }
   if (!data.times.length) {
-    $("#med-times-error").hidden = false;
-    if (!firstInvalid) firstInvalid = document.querySelector("#med-times input");
+    showError($("#med-times-error"), "Please pick at least one time of day.");
+    const first = document.querySelector("#med-times input");
+    first.setAttribute("aria-invalid", "true");
+    if (!firstInvalid) firstInvalid = first;
   }
   if (firstInvalid) firstInvalid.focus();
   return !firstInvalid;
@@ -488,7 +611,7 @@ const EXAMPLE_MEDS = [
   { name: "Lisinopril", dose: "10 mg · 1 tablet", purpose: "blood pressure", shape: "round", color: "pink", times: ["morning"], instructions: "", maxPerDay: "" },
   { name: "Atorvastatin", dose: "20 mg · 1 tablet", purpose: "cholesterol", shape: "oval", color: "white", times: ["bedtime"], instructions: "", maxPerDay: "" },
   { name: "Vitamin D", dose: "1000 IU · 1 softgel", purpose: "", shape: "oval", color: "yellow", times: ["morning"], instructions: "", maxPerDay: "" },
-  { name: "Albuterol inhaler", dose: "2 puffs", purpose: "breathing", shape: "inhaler", color: "blue", times: ["prn"], instructions: "Shake well before each use", maxPerDay: "Up to 4 times a day" },
+  { name: "Albuterol inhaler", dose: "2 puffs", purpose: "breathing", shape: "inhaler", color: "blue", times: ["prn"], instructions: "Shake well before each use", maxPerDay: "4 times a day" },
 ];
 
 /* ---------- Export / import ---------- */
@@ -511,27 +634,49 @@ function exportBackup() {
 function importBackup(file) {
   const reader = new FileReader();
   reader.onload = () => {
+    let next;
     try {
       const parsed = JSON.parse(reader.result);
       if (parsed.app !== "paperpillbox" || !parsed.data || !Array.isArray(parsed.data.meds)) {
-        throw new Error("wrong shape");
+        throw new Error("not a Paper Pillbox backup");
       }
-      const base = defaultState();
-      state = {
-        person: { ...base.person, ...(parsed.data.person || {}) },
-        meds: parsed.data.meds,
-        options: { ...base.options, ...(parsed.data.options || {}) },
-      };
-      setEditing(null);
-      clearForm();
-      renderAll();
-      saveState();
-      showSnackbar("Backup opened — your chart is back.");
+      next = normalizeState(parsed.data);
     } catch {
-      showSnackbar("That file doesn't look like a Paper Pillbox backup.");
+      showSnackbar("That file isn’t a Paper Pillbox backup — your chart hasn’t changed. Look in your downloads for a file named paper-pillbox-backup….json");
+      return;
     }
+
+    /* Opening a backup replaces everything. Say so before it happens. */
+    if (state.meds.length) {
+      const count = state.meds.length;
+      const question = `Open this backup? It replaces the chart you have now (${count} medication${count === 1 ? "" : "s"}), and that can’t be undone.`;
+      if (!window.confirm(question)) return;
+    }
+
+    state = next;
+    setEditing(null);
+    clearForm();
+    renderPersonFields();
+    renderAll();
+    saveState();
+    showSnackbar("Backup opened.");
   };
   reader.readAsText(file);
+}
+
+/* ---------- Reset ---------- */
+
+function performReset() {
+  state = defaultState();
+  setEditing(null);
+  clearForm();
+  renderPersonFields();
+  renderAll();
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch { /* nothing to clear */ }
+  showSnackbar("Chart cleared. Fresh start.");
+  setSaveIndicator("");
 }
 
 /* ---------- Render everything ---------- */
@@ -540,10 +685,8 @@ function renderPersonFields() {
   document.querySelectorAll("[data-person]").forEach((input) => {
     input.value = state.person[input.dataset.person] || "";
   });
-  const sizeInput = document.querySelector(`input[name="text-size"][value="${state.options.textSize}"]`);
-  if (sizeInput) sizeInput.checked = true;
-  const orientInput = document.querySelector(`input[name="orientation"][value="${state.options.orientation}"]`);
-  if (orientInput) orientInput.checked = true;
+  checkByValue("text-size", state.options.textSize);
+  checkByValue("orientation", state.options.orientation);
 }
 
 function renderAll() {
@@ -595,11 +738,15 @@ function init() {
   $("#med-color").addEventListener("change", updateChipPreview);
   $("#med-times").addEventListener("change", () => {
     updateMaxField();
-    if (selectedTimes().length) $("#med-times-error").hidden = true;
+    if (selectedTimes().length) {
+      $("#med-times-error").hidden = true;
+      document.querySelectorAll("#med-times input").forEach((i) => i.removeAttribute("aria-invalid"));
+    }
   });
   $("#med-name").addEventListener("input", () => {
     if ($("#med-name").value.trim()) {
       $("#med-name-error").hidden = true;
+      $("#med-name").removeAttribute("aria-invalid");
       $("#med-name").closest(".field").classList.remove("field-invalid");
     }
   });
@@ -623,10 +770,12 @@ function init() {
 
     if (editingId) {
       const idx = state.meds.findIndex((m) => m.id === editingId);
-      if (idx !== -1) state.meds[idx] = { ...state.meds[idx], ...data };
+      /* An edited example is the user's own medication now. */
+      if (idx !== -1) state.meds[idx] = { ...state.meds[idx], ...data, example: false };
       showSnackbar(`${data.name} updated.`);
     } else {
-      state.meds.push({ id: newId(), ...data });
+      state.meds.push({ id: newId(), example: false, ...data });
+      showSnackbar(`${data.name} added to the chart.`);
     }
     setEditing(null);
     clearForm();
@@ -650,7 +799,7 @@ function init() {
     if (e.target.closest(".edit")) {
       setEditing(med.id);
       fillForm(med);
-      $("#med-form").scrollIntoView({ behavior: "smooth", block: "start" });
+      $("#med-form").scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       $("#med-name").focus();
     }
     if (e.target.closest(".delete")) {
@@ -664,29 +813,51 @@ function init() {
       renderAll();
       saveState();
       showSnackbar(`${med.name} removed.`, { undo: true });
+      /* Deleting the focused button strands focus on <body>. Put it back. */
+      const remaining = document.querySelectorAll("#med-list .med-item .delete");
+      if (remaining.length) remaining[Math.min(idx, remaining.length - 1)].focus();
+      else $("#med-name").focus();
     }
   });
 
   $("#snackbar-action").addEventListener("click", () => {
     if (lastDeleted) {
       state.meds.splice(lastDeleted.idx, 0, lastDeleted.med);
-      lastDeleted = null;
       renderAll();
       saveState();
     }
     hideSnackbar();
+    $("#med-name").focus();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("#snackbar").hidden) hideSnackbar();
   });
 
   /* Example */
   $("#load-example").addEventListener("click", () => {
-    state.meds = EXAMPLE_MEDS.map((m) => ({ id: newId(), ...m }));
+    state.meds = EXAMPLE_MEDS.map((m) => ({ id: newId(), ...m, example: true }));
     renderAll();
     saveState();
     showSnackbar("Example loaded — replace it with your own medications.");
   });
 
+  $("#clear-example").addEventListener("click", () => {
+    state.meds = state.meds.filter((m) => !m.example);
+    renderAll();
+    saveState();
+    showSnackbar("Example medications cleared.");
+  });
+
   /* Print */
-  $("#print-btn").addEventListener("click", () => window.print());
+  $("#print-btn").addEventListener("click", () => {
+    if (!state.meds.length) {
+      showSnackbar("Your chart is empty — add a medication first.");
+      $("#med-name").focus();
+      return;
+    }
+    window.print();
+  });
   window.addEventListener("beforeprint", () => {
     const el = $("#print-date");
     if (el) el.textContent = todayLong();
@@ -700,21 +871,20 @@ function init() {
     e.target.value = "";
   });
 
+  /* Reset. Old tablets may lack <dialog>; never leave a live destructive
+     button behind an inert dialog. */
   const dialog = $("#reset-dialog");
-  $("#reset-btn").addEventListener("click", () => dialog.showModal());
+  const dialogOk = typeof dialog.showModal === "function";
+  if (!dialogOk) dialog.hidden = true;
+
+  $("#reset-btn").addEventListener("click", () => {
+    if (dialogOk) dialog.showModal();
+    else if (window.confirm("Start over? This clears the whole chart — every medication and every detail.")) performReset();
+  });
   $("#reset-cancel").addEventListener("click", () => dialog.close());
   $("#reset-confirm").addEventListener("click", () => {
-    state = defaultState();
-    setEditing(null);
-    clearForm();
-    renderPersonFields();
-    renderAll();
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch { /* nothing to clear */ }
+    performReset();
     dialog.close();
-    showSnackbar("Chart cleared. Fresh start.");
-    setSaveIndicator("");
   });
 
   /* Preview scaling. Observe the pane, not the viewport — updateSheetScale
@@ -723,6 +893,7 @@ function init() {
   if (typeof ResizeObserver !== "undefined") {
     new ResizeObserver(updateSheetScale).observe(document.querySelector(".preview-pane"));
   }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateSheetScale);
 }
 
 document.addEventListener("DOMContentLoaded", init);

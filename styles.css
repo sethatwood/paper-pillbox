@@ -34,7 +34,9 @@
   --ink: #1F2E38;
   --ink-soft: #4E5F6A;
   --line: #D7DDDA;
-  --line-strong: #B9C3BF;
+  /* 4.51:1 on white. WCAG 1.4.11 needs 3:1 for a control's own boundary, and
+     these borders are the only thing marking a white field on a white card. */
+  --line-strong: #6E7975;
   --green: #0A5D50;
   --green-deep: #07463C;
   --green-tint: #E2EFEB;
@@ -235,7 +237,7 @@ input[type="text"]:focus-visible, input[type="tel"]:focus-visible, select:focus-
   border-color: var(--green);
   outline-offset: 0;
 }
-input::placeholder { color: #7C8A88; opacity: 1; }
+input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
 
 .field-error {
   margin-top: 6px;
@@ -243,7 +245,8 @@ input::placeholder { color: #7C8A88; opacity: 1; }
   font-weight: 700;
   color: var(--danger);
 }
-.field-invalid input, .field-invalid .time-check { border-color: var(--danger); }
+.field-invalid input { border-color: var(--danger); }
+[aria-invalid="true"] { outline: 2px solid var(--danger); outline-offset: 1px; }
 
 /* Color swatches */
 .swatches { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -259,7 +262,8 @@ input::placeholder { color: #7C8A88; opacity: 1; }
   display: block;
   width: 32px; height: 32px;
   border-radius: 50%;
-  border: 2px solid rgba(31, 46, 56, 0.25);
+  /* Solid, not translucent: the white swatch was white-on-white before. */
+  border: 2px solid #6E7975;
   transition: transform 100ms ease;
 }
 .swatch input:checked + .swatch-dot {
@@ -268,6 +272,14 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 }
 .swatch input:focus-visible + .swatch-dot {
   box-shadow: 0 0 0 2.5px #fff, 0 0 0 5.5px var(--green);
+}
+
+.swatch-name {
+  margin-top: 9px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  min-height: 1.3em;
 }
 
 /* Live chip preview */
@@ -470,6 +482,34 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 }
 .example-offer p { margin-bottom: 10px; }
 
+.example-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  vertical-align: 1px;
+  color: var(--dawn-ink);
+  background: var(--dawn-band);
+  border-radius: 999px;
+}
+
+/* Sample data is a paper hazard: it must be loud until it's gone. */
+.example-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--dawn-band);
+  border: 1.5px solid var(--dawn-ink);
+  border-radius: 12px;
+  color: var(--dawn-ink);
+}
+.example-banner p { flex: 1; min-width: 190px; font-size: 15px; }
+.example-banner .btn { min-height: 42px; padding: 8px 14px; font-size: 15px; }
+
 /* ---------- Paper direction ---------- */
 .orientation-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .orientation-option {
@@ -605,6 +645,18 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 }
 .sheet-meta .allergies { font-weight: 700; }
 
+.sheet-sample {
+  margin-top: 0.9em;
+  padding: 0.5em 0.8em;
+  border: 2px solid #6E430C;
+  border-radius: 6px;
+  background: #FAEFDC;
+  color: #6E430C;
+  font-weight: 700;
+  font-size: 0.92em;
+  text-align: center;
+}
+
 /* Time-of-day slots. The band sits in <thead> so print repeats it per page. */
 .slot { margin-top: 1.5em; }
 .band-row td {
@@ -622,6 +674,15 @@ input::placeholder { color: #7C8A88; opacity: 1; }
   font-weight: 700;
 }
 .slot-head svg { width: 1.25em; height: 1.25em; flex: none; }
+/* Rides in the repeating band so a loose page 2 still names its patient. */
+.slot-ident {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 0.76em;
+  font-weight: 400;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
 .slot-morning .slot-head { background: var(--dawn-band); color: var(--dawn-ink); }
 .slot-noon .slot-head { background: var(--day-band); color: var(--day-ink); }
 .slot-evening .slot-head { background: var(--dusk-band); color: var(--dusk-ink); }
@@ -831,6 +892,7 @@ input::placeholder { color: #7C8A88; opacity: 1; }
 
   .slot-head,
   .slot tbody tr:nth-child(even),
+  .sheet-sample,
   .checkbox {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
