@@ -431,9 +431,9 @@ function renderSheet() {
         <thead>
           ${bandCell("prn", "Only as needed", 3)}
           <tr>
-            <th scope="col" style="width:45%">Medicine</th>
+            <th scope="col" class="prn-col-med">Medicine</th>
             <th scope="col">When to use it</th>
-            <th scope="col" style="width:24%">Do not use more than</th>
+            <th scope="col" class="prn-col-max">Do not use more than</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -479,10 +479,84 @@ function updateSheetScale() {
   viewport.style.height = sheet.offsetHeight * scale + "px";
 }
 
-/* `@page { size: … }` accepts no custom property, so the rule is rewritten. */
+/* `@page { size: … }` accepts no custom property, so the rule is rewritten at
+   runtime. Three routes, because no single one covers every way this page gets
+   opened. Preference order matters:
+
+   1. A constructed stylesheet. Not a <style> element, so `style-src 'self'`
+      never sees it, and it works from a file:// URL. Needs a 2023-era browser.
+   2. Appending to styles.css itself, reached through CSSOM. Works in every
+      browser over http(s), but a file:// page cannot read a linked sheet's
+      rules (opaque origin), so it throws there.
+   3. A <style> element with text. Works from file:// on ancient browsers —
+      the only context left, and one where no CSP is in play.
+
+   Route 3 under a strict CSP is blocked, which is correct: by then routes 1
+   and 2 have both had their chance. */
+let pageSheet = null;
+let pageSheetRoute = "";
+let pageRuleIndex = -1;
+
+function linkedStyleSheet() {
+  for (const sheet of document.styleSheets) {
+    if (!sheet.href || !sheet.href.endsWith("styles.css")) continue;
+    try {
+      void sheet.cssRules.length; /* throws on an opaque (file://) origin */
+      return sheet;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function ensurePageSheet() {
+  if (pageSheet) return pageSheet;
+
+  if (typeof CSSStyleSheet === "function" && "adoptedStyleSheets" in document) {
+    try {
+      const constructed = new CSSStyleSheet();
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, constructed];
+      pageSheet = constructed;
+      pageSheetRoute = "constructed";
+      return pageSheet;
+    } catch { /* fall through */ }
+  }
+
+  const linked = linkedStyleSheet();
+  if (linked) {
+    pageSheet = linked;
+    pageSheetRoute = "linked";
+    return pageSheet;
+  }
+
+  const el = document.createElement("style");
+  el.textContent = "@page { size: portrait; margin: 10mm 12mm; }";
+  document.head.appendChild(el);
+  pageSheet = el.sheet; /* null if a CSP blocked the element */
+  pageSheetRoute = "element";
+  return pageSheet;
+}
+
 function applyPageRule() {
-  const orientation = state.options.orientation;
-  $("#page-rule").textContent = `@page { size: ${orientation}; margin: 10mm 12mm; }`;
+  const orientation = state.options.orientation; /* always "portrait" | "landscape" */
+  try {
+    const sheet = ensurePageSheet();
+    if (sheet) {
+      if (pageRuleIndex >= 0) {
+        sheet.deleteRule(pageRuleIndex);
+        pageRuleIndex = -1;
+      }
+      /* Appended last so it outranks the @page fallback in styles.css. */
+      pageRuleIndex = sheet.insertRule(
+        `@page { size: ${orientation}; margin: 10mm 12mm; }`,
+        sheet.cssRules.length
+      );
+    }
+  } catch {
+    /* The printed layout is unaffected either way; the reader just picks the
+       orientation in the print dialog, exactly as the on-screen tip says. */
+  }
   $("#orientation-word").textContent = orientation;
 }
 
@@ -493,7 +567,7 @@ function renderSwatches() {
   wrap.innerHTML = COLORS.map(
     (c, i) => `<label class="swatch">
       <input type="radio" name="med-color" value="${c.id}" ${i === 0 ? "checked" : ""} aria-label="${c.label}">
-      <span class="swatch-dot" style="background:${c.hex}"></span>
+      <span class="swatch-dot swatch-${c.id}"></span>
     </label>`
   ).join("");
 }

@@ -248,7 +248,21 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
 .field-invalid input { border-color: var(--danger); }
 [aria-invalid="true"] { outline: 2px solid var(--danger); outline-offset: 1px; }
 
-/* Color swatches */
+/* Color swatches. The fills live here rather than in a style attribute so the
+   page can ship a Content-Security-Policy with no 'unsafe-inline'. */
+.swatch-white  { background: #FFFFFF; }
+.swatch-cream  { background: #F3E7C6; }
+.swatch-yellow { background: #F0CE4E; }
+.swatch-orange { background: #E8963F; }
+.swatch-pink   { background: #ECA6B8; }
+.swatch-red    { background: #C6473E; }
+.swatch-purple { background: #8E6BB5; }
+.swatch-blue   { background: #4A7EC0; }
+.swatch-teal   { background: #3E9C97; }
+.swatch-green  { background: #4E9B6F; }
+.swatch-brown  { background: #8A5A3B; }
+.swatch-gray   { background: #9AA3A0; }
+
 .swatches { display: flex; flex-wrap: wrap; gap: 9px; }
 .swatch { position: relative; margin: 0; }
 .swatch input {
@@ -736,6 +750,8 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
 }
 
 /* As-needed table */
+.prn-col-med { width: 45%; }
+.prn-col-max { width: 24%; }
 .slot-prn tbody td { padding: 0.55em 0.6em; font-size: 0.95em; }
 .slot-prn thead th { text-align: left; padding-left: 0.6em; }
 .slot-prn thead th:first-child { padding-left: 4px; }
@@ -781,6 +797,19 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
   color: var(--ink-soft);
 }
 .disclaimer { font-size: 14px; }
+
+.source-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--green-deep);
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.source-link svg { width: 17px; height: 17px; flex: none; }
+.source-link a:hover { color: var(--ink); }
 
 /* ---------- Snackbar ---------- */
 .snackbar {
@@ -864,9 +893,14 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
    PRINT — the whole point.
    Only the sheet prints. Bands keep their tints where the browser allows;
    every encoding also survives pure grayscale (icons + labels + borders).
-   The @page rule lives in a <style id="page-rule"> element so the chosen
-   orientation can be swapped at runtime; `size` accepts no custom property.
+   `size` accepts no custom property, so app.js rewrites this rule through
+   CSSOM at runtime. This declaration is the no-JavaScript fallback.
    ========================================================================== */
+@page {
+  size: portrait;
+  margin: 10mm 12mm;
+}
+
 @media print {
   html, body { background: #fff; }
 

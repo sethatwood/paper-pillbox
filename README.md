@@ -51,7 +51,10 @@ chart is saved in your own browser's local storage. You can save a backup
 file to your computer and open it again later, on any machine.
 
 This isn't a privacy *policy*, it's a privacy *architecture*: the site has no
-backend to leak from.
+backend to leak from. And it isn't only a promise — paperpillbox.com is served
+with `Content-Security-Policy: connect-src 'none'`, so the page **cannot** open
+a network connection to anywhere, not even back to the server it came from.
+Open devtools and check.
 
 ## Run it yourself
 
@@ -66,6 +69,9 @@ open paper-pillbox/index.html
 
 No build step, no dependencies, nothing to update. It should work, untouched,
 for a very long time.
+
+To host it yourself, see [deploy/](deploy/) — it's a file copy plus a handful
+of response headers.
 
 ## Accessibility
 
