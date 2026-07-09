@@ -91,6 +91,30 @@ contrast, full keyboard operability, visible focus, generous touch targets,
 structure. If something doesn't work with your assistive tech, that's a bug —
 please open an issue.
 
+## Making it yours
+
+This repository documents a real deployment rather than a generic one, so a few
+files name `paperpillbox.com` on purpose. If you fork it, these are all of them:
+
+| File | What to change |
+| --- | --- |
+| `public/index.html` | `<link rel="canonical">`, the `og:` and `twitter:` tags, and the GitHub link in the footer |
+| `public/app.js` | the `.credit` line in `renderSheet()` — it prints the domain **on the chart itself** |
+| `public/robots.txt` | the `Sitemap:` URL |
+| `public/sitemap.xml` | the `<loc>` URL |
+| `deploy/stats.sh` | the `SITE` variable at the top |
+| `deploy/nginx.conf` | the access-log filename, and your own Forge site id |
+
+Two strings in `app.js` mention the name but are **not** yours to rename:
+`STORAGE_KEY` identifies saved charts in a visitor's browser, and the `app:
+"paperpillbox"` field tags backup files. Change either and you lock people out
+of the chart they already made, or out of a backup they already saved.
+
+Nothing else is environment-specific: no API keys, no build config, no
+`.env`. If you serve the `public/` directory from any static host, the tool
+works. Do carry the headers from `deploy/nginx.conf` across, though — without
+`connect-src 'none'` the privacy claim in your footer is just a sentence.
+
 ## Contributing
 
 Bug reports and small, focused pull requests are very welcome. The bar for
