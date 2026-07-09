@@ -33,8 +33,12 @@ Create the site with:
 - **Root domain:** `paperpillbox.com`
 - **Aliases:** `www.paperpillbox.com`
 - **Project type:** Static HTML / Nuxt.js
-- **Web directory:** `/` — **not** the default `/public`. `index.html` lives
-  at the repository root.
+- **Web directory:** `/public` — Forge's default. Leave it alone.
+
+Everything a browser should fetch lives in `public/`. The repository's `.git`
+directory, these notes, and the README sit *above* the web root, so nginx has
+no way to serve them even if a rule is later lost. That is structure doing the
+work a `deny` rule would otherwise have to remember to do.
 
 Install the repository from `sethatwood/paper-pillbox`, branch `main`, and
 leave *Install Composer dependencies* unchecked. Then replace the deploy
@@ -80,7 +84,8 @@ without an `'unsafe-inline'` escape hatch.
 
 ```sh
 curl -sI https://paperpillbox.com | grep -i content-security-policy
-curl -s -o /dev/null -w '%{http_code}\n' https://paperpillbox.com/.git/config   # expect 403
+curl -s -o /dev/null -w '%{http_code}\n' https://paperpillbox.com/.git/config   # expect 403 or 404
+curl -s -o /dev/null -w '%{http_code}\n' https://paperpillbox.com/deploy/stats.sh  # expect 404
 curl -s -o /dev/null -w '%{redirect_url}\n' https://www.paperpillbox.com        # expect the apex
 ```
 

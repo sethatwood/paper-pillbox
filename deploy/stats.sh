@@ -56,7 +56,7 @@ args=(
 # one glob covers today and everything logrotate has kept.
 if [ -n "${html_out}" ]; then
   case "${html_out}" in
-    /home/forge/"${SITE}"/*)
+    /home/forge/"${SITE}"/public/*|*/public/*)
       echo "Refusing to write inside the web root — the report would be public." >&2
       exit 1 ;;
   esac

@@ -63,14 +63,18 @@ The reasoning is written up in [deploy/analytics.md](deploy/analytics.md).
 
 ## Run it yourself
 
-It's a static page. Clone the repo and open `index.html` in a browser —
-that's the whole deployment story. To host it, put the files on any static
-web server.
+It's a static page. Clone the repo and open `public/index.html` in a browser —
+that's the whole deployment story. To host it, serve the `public/` directory
+from any static web server.
 
 ```
 git clone https://github.com/sethatwood/paper-pillbox.git
-open paper-pillbox/index.html
+open paper-pillbox/public/index.html
 ```
+
+Everything the browser is allowed to see lives in `public/`. Nothing else —
+not `.git`, not the deploy notes — is inside the web root, so no server rule
+has to remember to hide them.
 
 No build step, no dependencies, nothing to update. It should work, untouched,
 for a very long time.
@@ -102,4 +106,4 @@ Always follow the directions from your doctor or pharmacist.
 ## License
 
 [MIT](LICENSE). The Atkinson Hyperlegible font is © Braille Institute of
-America, licensed under the [SIL Open Font License 1.1](fonts/OFL.txt).
+America, licensed under the [SIL Open Font License 1.1](public/fonts/OFL.txt).
