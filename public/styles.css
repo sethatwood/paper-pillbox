@@ -798,7 +798,8 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
 }
 .disclaimer { font-size: 14px; }
 
-.source-link a {
+.source-link a,
+.contact-link a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -808,8 +809,10 @@ input::placeholder { color: #6B7876; opacity: 1; } /* 4.59:1 on white */
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.source-link svg { width: 17px; height: 17px; flex: none; }
-.source-link a:hover { color: var(--ink); }
+.source-link svg,
+.contact-link svg { width: 17px; height: 17px; flex: none; }
+.source-link a:hover,
+.contact-link a:hover { color: var(--ink); }
 
 /* ---------- Snackbar ---------- */
 .snackbar {
